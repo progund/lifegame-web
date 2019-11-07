@@ -7,9 +7,14 @@ import java.util.List;
 
 public interface Formater {
 
+  String start();
+  String win();
+  String end();
+  String invalidGameId();
   String title(String title);
   String description(String description);
   String things(Map<ThingAction, Integer> things);
   String actions(List<ThingAction> actions);
   String suggestions(List<Suggestion> suggestions);
+  String explanation(String explanation);
 }
