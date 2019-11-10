@@ -14,6 +14,8 @@ import se.juneday.lifegame.web.format.Formater;
 import se.juneday.lifegame.web.format.HTMLFormater;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collections;
 import java.util.HashMap;
 import java.time.Instant;
 import java.time.Duration;
@@ -23,12 +25,12 @@ public class EngineStore  {
   public final String file_prefix = "www/WEB-INF/data/";
 
   // TODO: read from resource instead
-  private final static int MAX_ENGINES = 2;
-  private final static int MAX_ENGINE_AGE = 60 * 60 * 1000; // 60 minutes
+  private final static int MAX_ENGINES = 200;
+  private final static int MAX_ENGINE_AGE = 1000 * 60 * 60 ; // 60 minutes
 
-  private class EngineStoreModel {
-    LifeGameEngine engine;
-    Instant lastUse;
+  public class EngineStoreModel {
+    public LifeGameEngine engine;
+    public Instant lastUse;
     EngineStoreModel(LifeGameEngine engine) {
        this.engine=engine;
        this.lastUse=Instant.now();
@@ -47,7 +49,15 @@ public class EngineStore  {
   }
 
   private EngineStore() {
-    engines = new HashMap<String, EngineStoreModel>();
+    /*    Map<String, EngineStoreModel> map = new HashMap<>();
+    engines = Collections.synchronizedMap(map);
+    */
+
+    engines = new java.util.concurrent.ConcurrentHashMap<String, EngineStoreModel>();
+  }
+
+  public Map<String, EngineStoreModel> engines() {
+    return engines;
   }
 
   private LifeGameEngine newEngine(String world) {
@@ -79,51 +89,75 @@ public class EngineStore  {
   }
 
   public LifeGameEngine engine(String gameId) throws EngineStoreException {
-    removeOldEngines();
     if (gameId==null) {
       return null;
     }
     LifeGameEngine engine = null;
     
-    EngineStoreModel model = engines.get(gameId);
-    if (model!=null) {
-      engine = model.engine;
+    synchronized(engines){
+      EngineStoreModel model = engines.get(gameId);
+      if (model!=null) {
+        engine = model.engine;
+      }
     }
     return engine;
   }
 
-  public LifeGameEngine newEngine(String gameId, String world) throws EngineStoreException {
+  public void updateTimeStamp(String gameId) throws EngineStoreException {
+    if (gameId==null) {
+      return ;
+    }
+    LifeGameEngine engine = null;
+    
+    synchronized(engines){
+      EngineStoreModel model = engines.get(gameId);
+      model.lastUse=Instant.now();
+    }
+  }
 
+  public Instant instant(String gameId) throws EngineStoreException {
+    if (gameId==null) {
+      return null;
+    }
+    synchronized(engines){
+      EngineStoreModel model = engines.get(gameId);
+      if (model!=null) {
+        return model.lastUse;
+      }
+    }
+    return null;
+  }
+  
+  public LifeGameEngine newEngine(String gameId, String world) throws EngineStoreException {
     if (gameId==null) {
       return null;
     }
     LifeGameEngine engine;
 
-    System.out.println("newEngine() " + gameId + " " + world);
-    System.out.println("newEngine() engines count: " + engines.size());
-    EngineStoreModel model = engines.get(gameId);
-    if (model==null) {
-      System.out.println("newEngine() model null");
-      if (engines.size() >= MAX_ENGINES ) {
-        throw new EngineStoreException("Too many engines created");
+    removeOldEngines();
+
+    synchronized(engines){
+      EngineStoreModel model;
+      model = engines.get(gameId);
+      if (model==null) {
+        if (engines.size() >= MAX_ENGINES ) {
+          throw new EngineStoreException("Too many engines created");
+        }
+        engine = newEngine(world);
+        engines.put(gameId, new EngineStoreModel(engine));
+      } else {
+        engine = engines.get(gameId).engine;
       }
-      engine = newEngine(world);
-      engines.put(gameId, new EngineStoreModel(engine));
-      System.out.println("newEngine() added");
-    } else {
-      System.out.println("newEngine() model exists");
-      engine = engines.get(gameId).engine;
+      System.out.println("newEngine() engines added: " + gameId);
     }
-    System.out.println("newEngine() engines added: " + gameId);
-    System.out.println("newEngine() engines count: " + engines.size());
-    //    System.out.println("newEngine() engine: " + engines.get(gameId).engine);
-    System.out.println("newEngine() engines added: " + gameId);
-    System.out.println("newEngine() engines count: " + engines.size());
     return engine;
   }
 
   public void removeEngine(String gameId) {
-    engines.remove(gameId);
+    synchronized(engines){
+      engines.remove(gameId);
+      System.out.println("removeOldEngines() engines removed: " + gameId);
+    }
   }
   
   public static class EngineStoreException extends Exception {
@@ -135,17 +169,16 @@ public class EngineStore  {
     }
   }
 
-
   private void removeOldEngines() {
-    for (Map.Entry<String, EngineStoreModel> entry : engines.entrySet()) {
-      Duration res = Duration.between(entry.getValue().lastUse, Instant.now());
-      System.out.println(" ********************************** " + entry.getValue().lastUse + " " + Instant.now() + " ---> " + res.toMillis());
-
-      if (res.toMillis() > MAX_ENGINE_AGE) {
-        System.out.println(" ********************************** REMOVE " + entry.getKey());
-        removeEngine(entry.getKey());
+    synchronized(engines){
+      for (Map.Entry<String, EngineStoreModel> entry : engines.entrySet()) {
+        Duration res = Duration.between(entry.getValue().lastUse, Instant.now());
+        
+        if (res.toMillis() > MAX_ENGINE_AGE) {
+          engines.remove(entry.getKey());
+          System.out.println("removeOldEngines() engines removed: " + entry.getKey());
+        }
       }
-      
     }
   }
   

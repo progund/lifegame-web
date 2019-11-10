@@ -36,6 +36,8 @@ public class GameWeb extends HttpServlet {
   private static EngineStore engineStore;
   private LifeGameEngine engine;
   private static int counter = 1000;
+  private boolean debug ;
+
   
   static {
     engineStore = EngineStore.getInstance();
@@ -56,16 +58,27 @@ public class GameWeb extends HttpServlet {
     String actionThing = request.getParameter("pickup");
     String dropThing = request.getParameter("drop");
     String world = request.getParameter("world");
+    String admin = request.getParameter("admin");
+    String exit = request.getParameter("exit");
+    String debugParam = request.getParameter("debug");
 
     if (format==null) {
       format = "html";
     }
+
     
-    Formater formater = FormaterStore.getStore(format, gameId);
     PrintWriter out = response.getWriter();
+    Formater formater = FormaterStore.getStore(format, gameId);
 
+    debug = debugParam!=null && debugParam.equals("true");
+    formater.debug(debug);
 
-    if (world!=null) {
+    if (admin!=null) {
+      admin(out, formater);
+    } else if (exit!=null && exit.equals("true")) {
+      //TODO: exit game
+      exit(response, out, formater, gameId);
+    } else if (world!=null) {
       newWorld(request, response, world);
     } else {
       handleGame(request, response, out, formater, gameId, suggestion, actionThing, dropThing);
@@ -88,6 +101,25 @@ public class GameWeb extends HttpServlet {
       }
   }
 
+  private void admin(PrintWriter out, Formater formater) {
+    EngineStore store = EngineStore.getInstance();
+    //    out.print(formater.start());
+    out.print(formater.games(store));
+    //out.print(formater.end());
+  }
+
+  private void exit(HttpServletResponse response, PrintWriter out, Formater formater, String gameId) {
+    if (gameId==null) {
+      return;
+    }
+    EngineStore store = EngineStore.getInstance();
+    store.removeEngine(gameId);
+
+    String site = new String("/");
+    response.setStatus(response.SC_MOVED_TEMPORARILY);
+    response.setHeader("Location", site);
+  }
+
   private void handleGame(HttpServletRequest request, HttpServletResponse response,
                           PrintWriter out,
                           Formater formater,
@@ -106,6 +138,8 @@ public class GameWeb extends HttpServlet {
         out.print(formater.invalidGameId());
         return;
       }
+
+      engineStore.updateTimeStamp(gameId);
       
       if (suggestion!=null) {
         engine.handleExit(URLDecoder.decode(suggestion, "UTF-8"));  
@@ -129,20 +163,29 @@ public class GameWeb extends HttpServlet {
       }
       Situation here = engine.situation();
       
-      if (here.title().equals(LifeGameEngine.WIN_SITUATION)) {
+      if (engine.gameOver()) {
         EngineStore.getInstance().removeEngine(gameId);
-        out.print(formater.start());
         out.print(formater.win());
-        out.print(formater.end());
       } else {
-        out.print(formater.start());
-        out.print(formater.title(here.title()));
-        out.print(formater.explanation(engine.explanation()));
-        out.print(formater.description(here.description()));
-        out.print(formater.suggestions(here.suggestions()));
-        out.print(formater.actions(here.actions()));
-        out.print(formater.things(engine.things()));
-        out.print(formater.end());
+        out.print(formater.situation(here.title(),
+                                     engine.explanation(),
+                                     here.description(),
+                                     here.suggestions(),
+                                     engine.things(),
+                                     here.actions()));
+        /*
+          out.print(formater.title(here.title()));
+          out.print(formater.explanation(engine.explanation()));
+          out.print(formater.description(here.description()));
+          out.print(formater.suggestions(here.suggestions()));
+          out.print(formater.actions(here.actions()));
+          out.print(formater.things(engine.things()));
+        */
+        if (debug) {
+          out.print(formater.debug("[score:" + engine.score() + " | " +
+                                   "situations: " + engine.situationCount() + 
+                                   "]"));
+        }
       }
       
       // TODO: accept input frmo user instead ;)
