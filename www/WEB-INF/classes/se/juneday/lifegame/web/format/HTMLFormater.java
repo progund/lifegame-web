@@ -38,8 +38,10 @@ public class HTMLFormater implements Formater {
   private final static String H3_END =        "</h3>";
   private final static String H4 =            "<h4>";
   private final static String H4_END =        "</h4>";
+  private final static String ITAL =          "<i>";
+  private final static String ITAL_END =      "</i>";
 
-  private static final String DESCRIPTION = "";
+  private static final String DESCRIPTION = "Beskrivning";
   private static final String EXPLANATION = "Förklaring";
   private static final String SUGGESTIONS = "Vad gör du?";
   private static final String THINGS = "Dina saker";
@@ -107,17 +109,17 @@ public class HTMLFormater implements Formater {
     sb.append("      color: #fff;\n");
     sb.append("      }\n");
     sb.append("      #all {\n");
-    sb.append("      width: 100%;\n");
+    sb.append("      width: 90%;\n");
     sb.append("      height: 100%;\n");
     sb.append("      }\n");
     sb.append("      #game {\n");
     sb.append("      float: left;\n");
-    sb.append("      width: 100%;\n");
+    sb.append("      width: 90%;\n");
     sb.append("      height: 100%;\n");
     sb.append("      }\n");
     sb.append("      #situation {\n");
     sb.append("      float: left;\n");
-    sb.append("      width: 60%;\n");
+    sb.append("      width: 55%;\n");
     sb.append("      }\n");
     sb.append("      #you {\n");
     sb.append("      float: right;\n");
@@ -125,7 +127,7 @@ public class HTMLFormater implements Formater {
     sb.append("      }\n");
     sb.append("      #bottom {\n");
     sb.append("      position:absolute; bottom:0px;\n");
-    sb.append("      width: 100%;\n");
+    sb.append("      width: 90%;\n");
     sb.append("      vertical-align: middle;\n");
     sb.append("      text-align: center; \n");
     sb.append("      }\n");
@@ -144,7 +146,7 @@ public class HTMLFormater implements Formater {
   }
 
   private String description(String description) {
-    return BOLD + DESCRIPTION + BOLD_END + BR + description + BR + BR + "\n";
+    return H2 + DESCRIPTION + H2_END + BR + description + BR + BR + "\n";
   }
 
   private String things(Map<ThingAction, Integer> things) {
@@ -197,11 +199,11 @@ public class HTMLFormater implements Formater {
     if (explanation==null) {
       return "";
     }
-    return BOLD + EXPLANATION + BOLD_END + BR + explanation + BR + "\n";
+    return H2 + ITAL + EXPLANATION + H2_END + BR + explanation + ITAL_END + BR + "\n";
   }
 
   public String win() {
-    return start() + "<div id=\"all\">" + H1 + "Victor is mine!!!" + H1_END + "</div>" + smallFooter() + end();
+    return start() + H1 + "Victor is mine!!!" + H1_END + smallFooter() + end();
   }
 
   public String invalidGameId() {
@@ -259,7 +261,8 @@ public class HTMLFormater implements Formater {
   public String footer() {
     StringBuffer sb = new StringBuffer();
     sb.append("    <div id=\"bottom\">\n");
-    sb.append("      <h4>[<a href=\"/lifegame?format=html&gameId=155.4.69.33-1002-1573414556241&exit=true\"> avsluta spelet</a>");
+    sb.append("      <h4>[ <a href=\"/lifegame?format=html&gameId=155.4.69.33-1002-1573414556241&exit=true\">avsluta spelet</a>");
+    sb.append("      | <a href=\"/lifegame?admin=true\">admin</a>");
     sb.append(" | <a href=\"www.juneday.se\">juneday.se</a>]</h4>\n");
     sb.append("    </div>\n");
     return sb.toString();
@@ -281,9 +284,8 @@ public class HTMLFormater implements Formater {
                           Map<ThingAction, Integer> things,
                           List<ThingAction> actions) {
     StringBuffer sb = new StringBuffer();
-    sb.append("<div id=\"all\" >\n");
     sb.append(start());
-    sb.append(H1 + title(title) + H1_END);
+    sb.append(title(title));
     sb.append("<div id=\"game\" >\n");
     sb.append("  <div id=\"situation\" >\n");
     sb.append(explanation(explanation));
@@ -297,7 +299,6 @@ public class HTMLFormater implements Formater {
     sb.append("</div>");
     sb.append(footer());
     sb.append(end());
-    sb.append("</div>");
     return sb.toString();
   }
 
