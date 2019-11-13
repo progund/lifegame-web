@@ -10,8 +10,9 @@ import se.juneday.lifegame.verification.LifeVerifier;
 import se.juneday.lifegame.verification.LifeVerifierException;
 import se.juneday.lifegame.json.JParser;
 import se.juneday.lifegame.util.Log;
-import se.juneday.lifegame.web.format.Formater;
-import se.juneday.lifegame.web.format.HTMLFormater;
+import se.juneday.lifegame.web.format.Formatter;
+import se.juneday.lifegame.web.format.HTMLFormatter;
+import se.juneday.lifegame.web.format.JSONFormatter;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

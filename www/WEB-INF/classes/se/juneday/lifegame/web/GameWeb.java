@@ -17,8 +17,8 @@ import se.juneday.lifegame.verification.LifeVerifier;
 import se.juneday.lifegame.verification.LifeVerifierException;
 import se.juneday.lifegame.json.JParser;
 import se.juneday.lifegame.util.Log;
-import se.juneday.lifegame.web.format.Formater;
-import se.juneday.lifegame.web.format.FormaterStore;
+import se.juneday.lifegame.web.format.Formatter;
+import se.juneday.lifegame.web.format.FormatterStore;
 
 import java.util.Map;
 import java.util.ArrayList;
@@ -97,32 +97,32 @@ public class GameWeb extends HttpServlet {
 
     
     PrintWriter out = response.getWriter();
-    Formater formater = FormaterStore.getStore(format, gameId);
+    Formatter formatter = FormatterStore.getStore(format, gameId);
 
     debug = debugParam!=null && debugParam.equals("true");
-    formater.debug(debug);
+    formatter.debug(debug);
 
     if (admin!=null) {
-      admin(request, out, formater);
+      admin(request, out, formatter);
     } else if (exit!=null && exit.equals("true")) {
       //TODO: exit game
-      exit(request, response, out, formater, gameId);
+      exit(request, response, out, formatter, gameId);
     } else if (world!=null) {
-      newWorld(request, response, world);
+      newWorld(request, response, world, format);
     } else {
       
-      handleGame(request, response, out, formater, gameId, suggestion, actionThing, dropThing);
+      handleGame(request, response, out, formatter, gameId, suggestion, actionThing, dropThing);
     }
     
     out.close();
   }
 
-  private void newWorld(HttpServletRequest request, HttpServletResponse response, String world) {
+  private void newWorld(HttpServletRequest request, HttpServletResponse response, String world, String format) {
       String addr = request.getRemoteAddr();
       String id = addr + "-" + (counter++) + "-" + System.currentTimeMillis();
       try {
         engine = engineStore.newEngine(id, world);
-        String site = new String("/lifegame?gameId=" + id);
+        String site = new String("/lifegame?gameId=" + id + "&format=" + format);
         response.setStatus(response.SC_MOVED_TEMPORARILY);
         response.setHeader("Location", site);
         info(request, "new game: gameId=" + id);
@@ -133,16 +133,16 @@ public class GameWeb extends HttpServlet {
       }
   }
 
-  private void admin(HttpServletRequest request, PrintWriter out, Formater formater) {
+  private void admin(HttpServletRequest request, PrintWriter out, Formatter formatter) {
     EngineStore store = EngineStore.getInstance();
     debug(request, "admin requested");
-    //    out.print(formater.start());
-    out.print(formater.games(store));
-    //out.print(formater.end());
+    //    out.print(formatter.start());
+    out.print(formatter.games(store));
+    //out.print(formatter.end());
   }
 
   private void exit(HttpServletRequest request, HttpServletResponse response,
-                    PrintWriter out, Formater formater, String gameId) {
+                    PrintWriter out, Formatter formatter, String gameId) {
     if (gameId==null) {
       debug(request, "Invalid gameId: " + gameId);
       return;
@@ -162,7 +162,7 @@ public class GameWeb extends HttpServlet {
 
   private void handleGame(HttpServletRequest request, HttpServletResponse response,
                           PrintWriter out,
-                          Formater formater,
+                          Formatter formatter,
                           String gameId,
                           String suggestion,
                           String actionThing,
@@ -180,7 +180,7 @@ public class GameWeb extends HttpServlet {
       //      System.out.println("handleGame() engine:" + engine);
 
       if (engine==null) {
-        out.print(formater.invalidGameId());
+        out.print(formatter.invalidGameId());
         return;
       }
 
@@ -210,24 +210,24 @@ public class GameWeb extends HttpServlet {
       
       if (engine.gameOver()) {
         EngineStore.getInstance().removeEngine(gameId);
-        out.print(formater.win());
+        out.print(formatter.win());
       } else {
-        out.print(formater.situation(here.title(),
+        out.print(formatter.situation(here.title(),
                                      engine.explanation(),
                                      here.description(),
                                      here.suggestions(),
                                      engine.things(),
                                      here.actions()));
         /*
-          out.print(formater.title(here.title()));
-          out.print(formater.explanation(engine.explanation()));
-          out.print(formater.description(here.description()));
-          out.print(formater.suggestions(here.suggestions()));
-          out.print(formater.actions(here.actions()));
-          out.print(formater.things(engine.things()));
+          out.print(formatter.title(here.title()));
+          out.print(formatter.explanation(engine.explanation()));
+          out.print(formatter.description(here.description()));
+          out.print(formatter.suggestions(here.suggestions()));
+          out.print(formatter.actions(here.actions()));
+          out.print(formatter.things(engine.things()));
         */
         if (debug) {
-          out.print(formater.debug("[score:" + engine.score() + " | " +
+          out.print(formatter.debug("[score:" + engine.score() + " | " +
                                    "situations: " + engine.situationCount() + 
                                    "]"));
         }

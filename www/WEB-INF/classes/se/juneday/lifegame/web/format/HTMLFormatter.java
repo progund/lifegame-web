@@ -16,7 +16,7 @@ import java.net.URLEncoder;
 import java.io.UnsupportedEncodingException;
 
 
-public class HTMLFormater implements Formater {
+public class HTMLFormatter implements Formatter {
 
   private String gameId;
   private final static String BOLD =          "<b>";
@@ -89,7 +89,7 @@ public class HTMLFormater implements Formater {
     }
   }
 
-  public HTMLFormater(String gameId) {
+  public HTMLFormatter(String gameId) {
     this.gameId = gameId;
   }
   

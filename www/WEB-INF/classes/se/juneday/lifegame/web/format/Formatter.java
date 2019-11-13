@@ -7,7 +7,7 @@ import java.util.List;
 import se.juneday.lifegame.web.EngineStore;
 import se.juneday.lifegame.engine.LifeGameEngine;
 
-public interface Formater {
+public interface Formatter {
 
   //  String start();
   String win();
