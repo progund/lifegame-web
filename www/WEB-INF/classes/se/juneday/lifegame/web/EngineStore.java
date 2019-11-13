@@ -23,6 +23,7 @@ import java.time.Duration;
 public class EngineStore  {
 
   public final String file_prefix = "www/WEB-INF/data/";
+  public static final String LOG_TAG = EngineStore.class.getCanonicalName();
 
   // TODO: read from resource instead
   private final static int MAX_ENGINES = 200;
@@ -65,7 +66,7 @@ public class EngineStore  {
     try { 
       engine = new LifeGameEngine(file_prefix + "/" + world + ".json" );
     } catch (InvalidLifeException e) {
-      System.out.print("Failed creating game");
+      Log.e(LOG_TAG, "Failed creating game");
       return null;
     }
 
@@ -148,7 +149,7 @@ public class EngineStore  {
       } else {
         engine = engines.get(gameId).engine;
       }
-      System.out.println("newEngine() engines added: " + gameId);
+      Log.e(LOG_TAG, "newEngine() engines added: " + gameId);
     }
     return engine;
   }
@@ -156,7 +157,7 @@ public class EngineStore  {
   public void removeEngine(String gameId) {
     synchronized(engines){
       engines.remove(gameId);
-      System.out.println("removeOldEngines() engines removed: " + gameId);
+      Log.e(LOG_TAG, "removeOldEngines() engines removed: " + gameId);
     }
   }
   
@@ -176,7 +177,7 @@ public class EngineStore  {
         
         if (res.toMillis() > MAX_ENGINE_AGE) {
           engines.remove(entry.getKey());
-          System.out.println("removeOldEngines() engines removed: " + entry.getKey());
+          Log.e(LOG_TAG, "removeOldEngines() engines removed: " + entry.getKey());
         }
       }
     }

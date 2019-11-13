@@ -3,7 +3,6 @@ package se.juneday.lifegame.web;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.util.Date;
 import javax.servlet.*;
 import javax.servlet.http.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -25,6 +24,9 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -38,11 +40,35 @@ public class GameWeb extends HttpServlet {
   private static int counter = 1000;
   private boolean debug ;
 
+  public static final String LOG_TAG = EngineStore.class.getSimpleName();
+  public static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
   
   static {
     engineStore = EngineStore.getInstance();
   }
 
+
+  private String date() {
+    return LocalDateTime.now().format(formatter);
+  }
+
+  private String prefix(HttpServletRequest request) {
+    return date() + " @ " + request.getRemoteAddr() ;
+  }
+  
+  private void debug(HttpServletRequest request, String msg) {
+    Log.d(LOG_TAG, "" + prefix(request) + " [" + msg + "]");
+  }
+
+  private void info(HttpServletRequest request, String msg) {
+    Log.i(LOG_TAG, prefix(request) + " [" + msg + "]");
+  }
+
+  private boolean correctClientAddress(HttpServletRequest request, String gameId) {
+   // simple (well, very simple) test to verify exit game comes from
+   // correct client
+    return gameId.contains(request.getRemoteAddr());
+  }
   
   @Override
   public void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -51,6 +77,8 @@ public class GameWeb extends HttpServlet {
     request.setCharacterEncoding(UTF_8.name());
     response.setContentType("text/html;charset=" + UTF_8.name());
     response.setCharacterEncoding(UTF_8.name());
+
+    Log.logLevel(Log.LogLevel.DEBUG);
 
     String gameId = request.getParameter("gameId");
     String format = request.getParameter("format");
@@ -74,13 +102,14 @@ public class GameWeb extends HttpServlet {
     formater.debug(debug);
 
     if (admin!=null) {
-      admin(out, formater);
+      admin(request, out, formater);
     } else if (exit!=null && exit.equals("true")) {
       //TODO: exit game
-      exit(response, out, formater, gameId);
+      exit(request, response, out, formater, gameId);
     } else if (world!=null) {
       newWorld(request, response, world);
     } else {
+      
       handleGame(request, response, out, formater, gameId, suggestion, actionThing, dropThing);
     }
     
@@ -95,22 +124,30 @@ public class GameWeb extends HttpServlet {
         String site = new String("/lifegame?gameId=" + id);
         response.setStatus(response.SC_MOVED_TEMPORARILY);
         response.setHeader("Location", site);
+        info(request, "new game: gameId=" + id);
         return;
       } catch (EngineStore.EngineStoreException e) {
+        debug(request, "failed creating new world: " + e);
         // TODO: really, I mean really. Handle this!
       }
   }
 
-  private void admin(PrintWriter out, Formater formater) {
+  private void admin(HttpServletRequest request, PrintWriter out, Formater formater) {
     EngineStore store = EngineStore.getInstance();
+    debug(request, "admin requested");
     //    out.print(formater.start());
     out.print(formater.games(store));
     //out.print(formater.end());
   }
 
-  private void exit(HttpServletResponse response, PrintWriter out, Formater formater, String gameId) {
+  private void exit(HttpServletRequest request, HttpServletResponse response,
+                    PrintWriter out, Formater formater, String gameId) {
     if (gameId==null) {
+      debug(request, "Invalid gameId: " + gameId);
       return;
+    }
+    if (! correctClientAddress(request, gameId)) {
+      debug(request, "exit, bad ip");
     }
     EngineStore store = EngineStore.getInstance();
     store.removeEngine(gameId);
@@ -118,6 +155,7 @@ public class GameWeb extends HttpServlet {
     String site = new String("/");
     response.setStatus(response.SC_MOVED_TEMPORARILY);
     response.setHeader("Location", site);
+    info(request, "exit game: gameId=" + gameId);
   }
 
   private void handleGame(HttpServletRequest request, HttpServletResponse response,
@@ -129,7 +167,7 @@ public class GameWeb extends HttpServlet {
                           String dropThing) throws IOException{
     try {
 
-      System.out.println("handleGame() id:    " + gameId);
+      debug(request, "handle id:    " + gameId);
       
       engine = engineStore.engine(gameId);
       //      System.out.println("handleGame() engine:" + engine);
@@ -196,6 +234,7 @@ public class GameWeb extends HttpServlet {
       */
       
     } catch (EngineStore.EngineStoreException e) {
+      debug(request, "" + e);
       out.print(e);
     }
   }
