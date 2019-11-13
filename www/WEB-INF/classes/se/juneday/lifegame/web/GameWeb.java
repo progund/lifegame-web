@@ -65,8 +65,9 @@ public class GameWeb extends HttpServlet {
   }
 
   private boolean correctClientAddress(HttpServletRequest request, String gameId) {
-   // simple (well, very simple) test to verify exit game comes from
-   // correct client
+    // simple (well, very simple) test to verify exit game comes from
+    // correct client
+    debug(request, " check " + request.getRemoteAddr() + " contains " + gameId + " => " + gameId.contains(request.getRemoteAddr()));
     return gameId.contains(request.getRemoteAddr());
   }
   
@@ -148,14 +149,15 @@ public class GameWeb extends HttpServlet {
     }
     if (! correctClientAddress(request, gameId)) {
       debug(request, "exit, bad ip");
+    } else {
+      EngineStore store = EngineStore.getInstance();
+      store.removeEngine(gameId);
+      info(request, "exit game: gameId=" + gameId);
     }
-    EngineStore store = EngineStore.getInstance();
-    store.removeEngine(gameId);
-
+    
     String site = new String("/");
     response.setStatus(response.SC_MOVED_TEMPORARILY);
     response.setHeader("Location", site);
-    info(request, "exit game: gameId=" + gameId);
   }
 
   private void handleGame(HttpServletRequest request, HttpServletResponse response,
@@ -168,6 +170,11 @@ public class GameWeb extends HttpServlet {
     try {
 
       debug(request, "handle id:    " + gameId);
+
+      if (! correctClientAddress(request, gameId)) {
+        debug(request, "bad ip: " + request.getRemoteAddr());
+        return;
+      }
       
       engine = engineStore.engine(gameId);
       //      System.out.println("handleGame() engine:" + engine);
