@@ -67,7 +67,7 @@ public class GameWeb extends HttpServlet {
   private boolean correctClientAddress(HttpServletRequest request, String gameId) {
     // simple (well, very simple) test to verify exit game comes from
     // correct client
-    debug(request, " check " + request.getRemoteAddr() + " contains " + gameId + " => " + gameId.contains(request.getRemoteAddr()));
+    //    debug(request, " check " + request.getRemoteAddr() + " contains " + gameId + " => " + gameId.contains(request.getRemoteAddr()));
     return gameId.contains(request.getRemoteAddr());
   }
   
