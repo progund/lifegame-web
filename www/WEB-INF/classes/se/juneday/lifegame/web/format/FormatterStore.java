@@ -8,7 +8,7 @@ public class FormatterStore {
     } else if (format.equals("json")) {
       return new JSONFormatter(gameId);
     } 
-    return null;
+    return new JSONFormatter(gameId);
   }
   
 }

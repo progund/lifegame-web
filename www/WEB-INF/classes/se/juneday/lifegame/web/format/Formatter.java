@@ -23,7 +23,9 @@ public interface Formatter {
   String explanation(String explanation);
   */
   
-  String situation(String title,
+  String situation(String gameTitle,
+                   String gameSubTitle,
+                   String title,
                    String explanation,
                    String description,
                    List<Suggestion> suggestions,
@@ -35,7 +37,19 @@ public interface Formatter {
   void debug(boolean enable);
 
   String games(EngineStore store);
+  String worlds(List<Formatter.GameInfo> worlds);
+  String error(String message);
 
-  
+
+  public class GameInfo {
+    public String title;
+    public String subTitle;
+    public String url;
+    public GameInfo(String title, String subTitle, String url) {
+      this.title = title;
+      this.subTitle = subTitle;
+      this.url = url;
+    }
+  }
   
 }

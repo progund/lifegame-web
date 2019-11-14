@@ -72,13 +72,11 @@ public class JSONFormatter implements Formatter {
     return jarray;
   }
 
-  private JSONObject explanation(String explanation) {
-    JSONObject jo = new JSONObject();
+  private String explanation(String explanation) {
     if (explanation==null) {
-      return jo;
+      return "";
     }
-    jo.put("explanation", explanation );
-    return jo;
+    return explanation;
   }
 
   public String win() {
@@ -88,7 +86,9 @@ public class JSONFormatter implements Formatter {
   }
 
   public String invalidGameId() {
-    return "";
+      JSONObject jo = new JSONObject();
+      jo.put("error", "Game id no longer valid");
+      return jo.toString();
   }
 
   public String debug(String text) {
@@ -125,16 +125,20 @@ public class JSONFormatter implements Formatter {
   public void debug(boolean enable) {
   }
 
-  public String situation(String title,
+  public String situation(String gameTitle,
+                          String gameSubTitle,
+                          String title,
                           String explanation,
                           String description,
                           List<Suggestion> suggestions,
                           Map<ThingAction, Integer> things,
                           List<ThingAction> actions) {
     JSONObject jo = new JSONObject();
+    jo.put("gametitle",gameTitle );
+    jo.put("gamesubtitle",gameSubTitle );
     jo.put("gameid",gameId );
     jo.put("title",title );
-    jo.put("explanation",explanation);
+    jo.put("explanation",explanation(explanation));
     jo.put("description",description);
     jo.put("suggestions",suggestions(suggestions));
     jo.put("actions",actions(actions));
@@ -142,5 +146,23 @@ public class JSONFormatter implements Formatter {
     return jo.toString();
   }
 
+  public String worlds(List<Formatter.GameInfo> worlds) {
+    JSONArray jarray = new JSONArray();
+    for (Formatter.GameInfo world: worlds) {
+      JSONObject jo = new JSONObject();
+      jo.put("title", world.title);
+      jo.put("subtitle", world.subTitle);
+      jo.put("url", world.url);
+      System.out.println(" adding: " + world.subTitle);
+      jarray.put(jo);
+    }
+    return jarray.toString();
+  }
+
+  public  String error(String message) {
+      JSONObject jo = new JSONObject();
+      jo.put("error", message);
+      return jo.toString();
+  }
 
 }

@@ -20,17 +20,27 @@ import se.juneday.lifegame.util.Log;
 import se.juneday.lifegame.web.format.Formatter;
 import se.juneday.lifegame.web.format.FormatterStore;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.Path;
+
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-
+import java.util.stream.Stream;
 
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.io.UnsupportedEncodingException;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONString;
 
 
 public class GameWeb extends HttpServlet {
@@ -82,12 +92,14 @@ public class GameWeb extends HttpServlet {
     Log.logLevel(Log.LogLevel.DEBUG);
 
     String gameId = request.getParameter("gameId");
+    String worlds = request.getParameter("worlds");
     String format = request.getParameter("format");
     String suggestion = request.getParameter("suggestion");
     String actionThing = request.getParameter("pickup");
     String dropThing = request.getParameter("drop");
     String world = request.getParameter("world");
     String admin = request.getParameter("admin");
+    String action = request.getParameter("action");
     String exit = request.getParameter("exit");
     String debugParam = request.getParameter("debug");
 
@@ -102,7 +114,11 @@ public class GameWeb extends HttpServlet {
     debug = debugParam!=null && debugParam.equals("true");
     formatter.debug(debug);
 
-    if (admin!=null) {
+    if (action!=null && action.equals("situation")) {
+      writeSituation(request, response, out, formatter, gameId);
+    } else if (worlds!=null) {
+      worlds(out, formatter);
+    } else if (admin!=null) {
       admin(request, out, formatter);
     } else if (exit!=null && exit.equals("true")) {
       //TODO: exit game
@@ -110,13 +126,44 @@ public class GameWeb extends HttpServlet {
     } else if (world!=null) {
       newWorld(request, response, world, format);
     } else {
-      
       handleGame(request, response, out, formatter, gameId, suggestion, actionThing, dropThing);
     }
     
     out.close();
   }
 
+  private Formatter.GameInfo infoFromFile(Path file) {
+    JSONObject jo ;
+    String data = null;
+    try {
+      data = new String(Files.readAllBytes(Paths.get(file.toString())));
+    } catch (IOException e) {
+      e.printStackTrace();
+      return null;
+    }
+    jo = new JSONObject(data);
+      String title = jo.getString("title");
+      String subTitle = jo.getString("subtitle");
+      //      String url = "/lifegame?world=" + file.getFileName().toString().replace(".json","");
+      String url = file.getFileName().toString().replace(".json","");
+      return new Formatter.GameInfo(title, subTitle, url);
+  }
+  
+  private void worlds(PrintWriter out, Formatter formatter) {
+    Log.d(LOG_TAG, "worlds():   ");
+    List<Formatter.GameInfo> worlds = new ArrayList<>();
+    try {
+      Files.newDirectoryStream(Paths.get("www/WEB-INF/data/"),
+                               path -> path.toString().endsWith(".json"))
+        .forEach((file) ->
+                 worlds.add(infoFromFile(file))
+                 );
+    } catch (IOException e) {
+      Log.d(LOG_TAG, "Failed finding game files: " + e);
+    }
+    out.print(formatter.worlds(worlds));
+  }
+  
   private void newWorld(HttpServletRequest request, HttpServletResponse response, String world, String format) {
       String addr = request.getRemoteAddr();
       String id = addr + "-" + (counter++) + "-" + System.currentTimeMillis();
@@ -173,6 +220,7 @@ public class GameWeb extends HttpServlet {
 
       if (! correctClientAddress(request, gameId)) {
         debug(request, "bad ip: " + request.getRemoteAddr());
+        out.print(formatter.error("IP address differs from originating"));
         return;
       }
       
@@ -187,6 +235,7 @@ public class GameWeb extends HttpServlet {
       engineStore.updateTimeStamp(gameId);
       
       if (suggestion!=null) {
+        debug(request, "suggestion:    \"" + suggestion + "\"");
         engine.handleExit(URLDecoder.decode(suggestion, "UTF-8"));  
       } else if (actionThing!=null) {
         String thing = URLDecoder.decode(actionThing, "UTF-8");
@@ -206,18 +255,24 @@ public class GameWeb extends HttpServlet {
           }
         }
       }
+      writeSituation(request, response, out,
+                     formatter, gameId);
+      /*
       Situation here = engine.situation();
       
       if (engine.gameOver()) {
         EngineStore.getInstance().removeEngine(gameId);
         out.print(formatter.win());
       } else {
-        out.print(formatter.situation(here.title(),
-                                     engine.explanation(),
-                                     here.description(),
-                                     here.suggestions(),
-                                     engine.things(),
-                                     here.actions()));
+        out.print(formatter.situation(engine.gameTitle(),
+                                      engine.gameSubTitle(),
+                                      here.title(),
+                                      engine.explanation(),
+                                      here.description(),
+                                      here.suggestions(),
+                                      engine.things(),
+                                      here.actions()));
+        */
         /*
           out.print(formatter.title(here.title()));
           out.print(formatter.explanation(engine.explanation()));
@@ -226,18 +281,18 @@ public class GameWeb extends HttpServlet {
           out.print(formatter.actions(here.actions()));
           out.print(formatter.things(engine.things()));
         */
-        if (debug) {
+      /*        if (debug) {
           out.print(formatter.debug("[score:" + engine.score() + " | " +
                                    "situations: " + engine.situationCount() + 
                                    "]"));
-        }
-      }
+                                   }*/
+      /*}*/
       
       // TODO: accept input frmo user instead ;)
       /*      ThingAction thing = engine.situation().actions().get(0);
-      if (thing!=null) {
-        engine.addActionThing(thing);
-      }
+              if (thing!=null) {
+              engine.addActionThing(thing);
+              }
       */
       
     } catch (EngineStore.EngineStoreException e) {
@@ -245,7 +300,33 @@ public class GameWeb extends HttpServlet {
       out.print(e);
     }
   }
-  
+
+  void writeSituation(HttpServletRequest request,
+                      HttpServletResponse response,
+                      PrintWriter out,
+                      Formatter formatter,
+                      String gameId) {
+    Situation here = engine.situation();
+      
+    if (engine.gameOver()) {
+      EngineStore.getInstance().removeEngine(gameId);
+      out.print(formatter.win());
+    } else {
+      out.print(formatter.situation(engine.gameTitle(),
+                                    engine.gameSubTitle(),
+                                    here.title(),
+                                    engine.explanation(),
+                                    here.description(),
+                                    here.suggestions(),
+                                    engine.things(),
+                                    here.actions()));
+        if (debug) {
+          out.print(formatter.debug("[score:" + engine.score() + " | " +
+                                   "situations: " + engine.situationCount() + 
+                                    "]"));
+        }
+    }
+  }
   
 }
 

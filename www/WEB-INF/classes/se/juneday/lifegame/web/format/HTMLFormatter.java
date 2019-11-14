@@ -38,6 +38,8 @@ public class HTMLFormatter implements Formatter {
   private final static String H3_END =        "</h3>";
   private final static String H4 =            "<h4>";
   private final static String H4_END =        "</h4>";
+  private final static String H5 =            "<h5>";
+  private final static String H5_END =        "</h5>";
   private final static String ITAL =          "<i>";
   private final static String ITAL_END =      "</i>";
 
@@ -226,13 +228,13 @@ public class HTMLFormatter implements Formatter {
   public String games(EngineStore store) {
     String s = start();
     synchronized(store.engines()) {
-      s += H1 + "Ongoing games: " + store.engines().size() + H1_END;
+      s += H1 + "Ongoing games: " + store.engines().size() + H1_END+ BR;
       for (Map.Entry<String, EngineStore.EngineStoreModel> entry : store.engines().entrySet()) {
         String inner;
         EngineStore.EngineStoreModel model = entry.getValue();
         LifeGameEngine engine = model.engine;
         Instant instant = model.lastUse;
-        inner = H2 + entry.getKey() + H2_END;
+        inner = H3 + entry.getKey() + H3_END + H5;
         Duration res = Duration.between(entry.getValue().lastUse, Instant.now());
         inner += "Last use: " + res.toMinutes() + " minutes" + BR;
         inner += "Current situation: " + engine.situation().title() + BR;
@@ -241,7 +243,7 @@ public class HTMLFormatter implements Formatter {
         inner += "Things: " + engine.things() + BR;
         // out.print(formater.actions(here.actions()));
         // out.print(formater.things(engine.things()));
-        s += inner + "\n";
+        s += inner + H5_END + "\n";
       }
 
       s += end();
@@ -276,8 +278,14 @@ public class HTMLFormatter implements Formatter {
     sb.append("    </div>\n");
     return sb.toString();
   }
-  
-  public String situation(String title,
+
+  public String worlds(List<Formatter.GameInfo> worlds){
+    return "NO IMPLEMENTED";
+  }
+
+  public String situation(String gameTitle,
+                          String gameSubTitle,
+                          String title,
                           String explanation,
                           String description,
                           List<Suggestion> suggestions,
@@ -302,5 +310,8 @@ public class HTMLFormatter implements Formatter {
     return sb.toString();
   }
 
+  public  String error(String message) {
+    return "<H1>ERROR:</h1><br>message";
+  }
 
 }
