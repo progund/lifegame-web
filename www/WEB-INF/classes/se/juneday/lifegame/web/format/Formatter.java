@@ -28,6 +28,7 @@ public interface Formatter {
                    String title,
                    String explanation,
                    String description,
+                   String question,
                    List<Suggestion> suggestions,
                    Map<ThingAction, Integer> things,
                    List<ThingAction> actions);

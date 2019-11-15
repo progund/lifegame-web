@@ -317,6 +317,7 @@ public class GameWeb extends HttpServlet {
                                     here.title(),
                                     engine.explanation(),
                                     here.description(),
+                                    here.question(),
                                     here.suggestions(),
                                     engine.things(),
                                     here.actions()));

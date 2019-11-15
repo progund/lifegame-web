@@ -97,8 +97,6 @@ public class JSONFormatter implements Formatter {
     return jo.toString();
   }
 
-  
-  
   public String games(EngineStore store) {
     JSONArray jarray = new JSONArray();
     synchronized(store.engines()) {
@@ -130,6 +128,7 @@ public class JSONFormatter implements Formatter {
                           String title,
                           String explanation,
                           String description,
+                          String question,
                           List<Suggestion> suggestions,
                           Map<ThingAction, Integer> things,
                           List<ThingAction> actions) {
@@ -138,6 +137,7 @@ public class JSONFormatter implements Formatter {
     jo.put("gamesubtitle",gameSubTitle );
     jo.put("gameid",gameId );
     jo.put("title",title );
+    jo.put("question",question );
     jo.put("explanation",explanation(explanation));
     jo.put("description",description);
     jo.put("suggestions",suggestions(suggestions));
