@@ -19,6 +19,7 @@ import se.juneday.lifegame.json.JParser;
 import se.juneday.lifegame.util.Log;
 import se.juneday.lifegame.web.format.Formatter;
 import se.juneday.lifegame.web.format.FormatterStore;
+import se.juneday.lifegame.web.storage.*;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -52,6 +53,10 @@ public class GameWeb extends HttpServlet {
 
   public static final String LOG_TAG = EngineStore.class.getSimpleName();
   public static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+  // TODO: make this "multithreaded"
+  public static final GameStore gs = new GameStore();
+
   
   static {
     engineStore = EngineStore.getInstance();
@@ -91,6 +96,13 @@ public class GameWeb extends HttpServlet {
 
     Log.logLevel(Log.LogLevel.DEBUG);
 
+    // TODO: remove this debug printout
+    for (Game g : gs.games()) {
+      Log.i(LOG_TAG, " * " + g);
+    }
+
+
+    
     String gameId = request.getParameter("gameId");
     String worlds = request.getParameter("worlds");
     String format = request.getParameter("format");
@@ -101,6 +113,7 @@ public class GameWeb extends HttpServlet {
     String admin = request.getParameter("admin");
     String action = request.getParameter("action");
     String exit = request.getParameter("exit");
+    String nick = request.getParameter("nick");
     String debugParam = request.getParameter("debug");
 
     if (format==null) {
@@ -114,6 +127,7 @@ public class GameWeb extends HttpServlet {
     debug = debugParam!=null && debugParam.equals("true");
     formatter.debug(debug);
 
+
     if (action!=null && action.equals("situation")) {
       writeSituation(request, response, out, formatter, gameId);
     } else if (worlds!=null) {
@@ -124,7 +138,7 @@ public class GameWeb extends HttpServlet {
       //TODO: exit game
       exit(request, response, out, formatter, gameId);
     } else if (world!=null) {
-      newWorld(request, response, world, format);
+      newWorld(request, response, format, world, nick);
     } else {
       handleGame(request, response, out, formatter, gameId, suggestion, actionThing, dropThing);
     }
@@ -142,11 +156,11 @@ public class GameWeb extends HttpServlet {
       return null;
     }
     jo = new JSONObject(data);
-      String title = jo.getString("title");
-      String subTitle = jo.getString("subtitle");
-      //      String url = "/lifegame?world=" + file.getFileName().toString().replace(".json","");
-      String url = file.getFileName().toString().replace(".json","");
-      return new Formatter.GameInfo(title, subTitle, url);
+    String title = jo.getString("title");
+    String subTitle = jo.getString("subtitle");
+    //      String url = "/lifegame?world=" + file.getFileName().toString().replace(".json","");
+    String url = file.getFileName().toString().replace(".json","");
+    return new Formatter.GameInfo(title, subTitle, url);
   }
   
   private void worlds(PrintWriter out, Formatter formatter) {
@@ -164,11 +178,16 @@ public class GameWeb extends HttpServlet {
     out.print(formatter.worlds(worlds));
   }
   
-  private void newWorld(HttpServletRequest request, HttpServletResponse response, String world, String format) {
+  private void newWorld(HttpServletRequest request,
+                        HttpServletResponse response,
+                        String format,
+                        String world,
+                        String nick) {
       String addr = request.getRemoteAddr();
       String id = addr + "-" + (counter++) + "-" + System.currentTimeMillis();
+      System.out.println("nick: " + nick);
       try {
-        engine = engineStore.newEngine(id, world);
+        engine = engineStore.newEngine(id, world, nick);
         String site = new String("/lifegame?gameId=" + id + "&format=" + format);
         response.setStatus(response.SC_MOVED_TEMPORARILY);
         response.setHeader("Location", site);
@@ -182,9 +201,10 @@ public class GameWeb extends HttpServlet {
 
   private void admin(HttpServletRequest request, PrintWriter out, Formatter formatter) {
     EngineStore store = EngineStore.getInstance();
-    debug(request, "admin requested");
+    //    debug(request, "admin requested");
     //    out.print(formatter.start());
-    out.print(formatter.games(store));
+    store.removeOldEngines();
+    out.print(formatter.games(EngineStore.MAX_ENGINE_AGE, store));
     //out.print(formatter.end());
   }
 
@@ -194,17 +214,17 @@ public class GameWeb extends HttpServlet {
       debug(request, "Invalid gameId: " + gameId);
       return;
     }
-    if (! correctClientAddress(request, gameId)) {
+    /*    if (! correctClientAddress(request, gameId)) {
       debug(request, "exit, bad ip");
+      out.print(formatter.error("Not the same IP address as when starting the game"));
     } else {
+    */
       EngineStore store = EngineStore.getInstance();
       store.removeEngine(gameId);
       info(request, "exit game: gameId=" + gameId);
-    }
+      out.print(formatter.info(request, response, "Game removed."));
+      /*}*/
     
-    String site = new String("/");
-    response.setStatus(response.SC_MOVED_TEMPORARILY);
-    response.setHeader("Location", site);
   }
 
   private void handleGame(HttpServletRequest request, HttpServletResponse response,
@@ -218,11 +238,11 @@ public class GameWeb extends HttpServlet {
 
       debug(request, "handle id:    " + gameId);
 
-      if (! correctClientAddress(request, gameId)) {
+      /*      if (! correctClientAddress(request, gameId)) {
         debug(request, "bad ip: " + request.getRemoteAddr());
         out.print(formatter.error("IP address differs from originating"));
         return;
-      }
+        }*/
       
       engine = engineStore.engine(gameId);
       //      System.out.println("handleGame() engine:" + engine);
@@ -236,6 +256,7 @@ public class GameWeb extends HttpServlet {
       
       if (suggestion!=null) {
         debug(request, "suggestion:    \"" + suggestion + "\"");
+        //System.out.println("handleGame() engine:" + engine);
         engine.handleExit(URLDecoder.decode(suggestion, "UTF-8"));  
       } else if (actionThing!=null) {
         String thing = URLDecoder.decode(actionThing, "UTF-8");
@@ -301,6 +322,8 @@ public class GameWeb extends HttpServlet {
     }
   }
 
+
+  
   void writeSituation(HttpServletRequest request,
                       HttpServletResponse response,
                       PrintWriter out,
@@ -309,18 +332,28 @@ public class GameWeb extends HttpServlet {
     Situation here = engine.situation();
       
     if (engine.gameOver()) {
-      EngineStore.getInstance().removeEngine(gameId);
       out.print(formatter.win());
+      gs.storeGame(new Game(gameId,
+                            engine.situationCount(),
+                            engine.score(),
+                            EngineStore.getInstance().nick(gameId)));
+
+      EngineStore.getInstance().removeEngine(gameId);
+      
     } else {
       out.print(formatter.situation(engine.gameTitle(),
                                     engine.gameSubTitle(),
                                     here.title(),
+                                    EngineStore.getInstance().nick(gameId),
                                     engine.explanation(),
                                     here.description(),
                                     here.question(),
                                     here.suggestions(),
                                     engine.things(),
-                                    here.actions()));
+                                    here.actions(),
+                                    EngineStore.getInstance().millisLeft(gameId),
+                                    engine.score(),
+                                    engine.situationCount()));
         if (debug) {
           out.print(formatter.debug("[score:" + engine.score() + " | " +
                                    "situations: " + engine.situationCount() + 
