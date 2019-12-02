@@ -28,14 +28,22 @@ public class EngineStore  {
 
   // TODO: read from resource instead
   private final static int MAX_ENGINES = 200;
-  private final static int MAX_ENGINE_AGE = 1000 * 60 * 60 ; // 60 minutes
+  private static int MINUTE = 1000 * 60;
+  private static int HOUR = 60 * MINUTE;
+  public final static int MAX_ENGINE_AGE = HOUR * 48  ; 
 
   public class EngineStoreModel {
     public LifeGameEngine engine;
     public Instant lastUse;
+    public String nick;
     EngineStoreModel(LifeGameEngine engine) {
        this.engine=engine;
        this.lastUse=Instant.now();
+    }
+    EngineStoreModel(LifeGameEngine engine, String nick) {
+       this.engine=engine;
+       this.lastUse=Instant.now();
+       this.nick=nick;
     }
   }
   
@@ -62,33 +70,6 @@ public class EngineStore  {
     return engines;
   }
 
-  private LifeGameEngine newEngine(String world) {
-    LifeGameEngine engine;
-    try { 
-      engine = new LifeGameEngine(file_prefix + "/" + world + ".json" );
-    } catch (InvalidLifeException e) {
-      Log.e(LOG_TAG, "Failed creating game");
-      return null;
-    }
-
-    /*
-    try { 
-      LifeVerifier verifier = new LifeVerifier(file);
-            verifier.verify();
-      System.out.println("Verification report");
-      System.out.println(" * Failures: " + verifier.failures());
-      System.out.println(" * Missing situations: " + verifier.missingSituations());
-      System.out.println(" * Missing things:     " + verifier.missingThings());
-      System.out.println(" * Missing exits:      " + verifier.missingExits());
-      if (verifier.failures()!=0) {
-        //System.exit(1);
-      }
-    } catch (LifeVerifierException | InvalidLifeException e) {
-      System.out.print("Failed verifying game");
-    }
-      */
-    return engine;
-  }
 
   public LifeGameEngine engine(String gameId) throws EngineStoreException {
     if (gameId==null) {
@@ -130,7 +111,20 @@ public class EngineStore  {
     return null;
   }
   
-  public LifeGameEngine newEngine(String gameId, String world) throws EngineStoreException {
+  private LifeGameEngine newEngine(String world) {
+    LifeGameEngine engine;
+    try { 
+      engine = new LifeGameEngine(file_prefix + "/" + world + ".json" );
+    } catch (InvalidLifeException e) {
+      Log.e(LOG_TAG, "Failed creating game");
+      return null;
+    }
+    return engine;
+  }
+
+
+  public LifeGameEngine newEngine(String gameId, String world, String nick)
+    throws EngineStoreException {
     if (gameId==null) {
       return null;
     }
@@ -146,7 +140,7 @@ public class EngineStore  {
           throw new EngineStoreException("Too many engines created");
         }
         engine = newEngine(world);
-        engines.put(gameId, new EngineStoreModel(engine));
+        engines.put(gameId, new EngineStoreModel(engine, nick));
       } else {
         engine = engines.get(gameId).engine;
       }
@@ -162,6 +156,19 @@ public class EngineStore  {
     }
   }
   
+  public long minutesLeft(String gameId) {
+    return millisLeft(gameId)/1000/60 ;
+  }
+  
+  public long millisLeft(String gameId) {
+    Duration res = Duration.between(engines.get(gameId).lastUse, Instant.now());
+    return (MAX_ENGINE_AGE - res.toMillis()) ;
+  }
+  
+  public String nick(String gameId) {
+    return engines.get(gameId).nick;
+  }
+  
   public static class EngineStoreException extends Exception {
     public EngineStoreException(String message) {
       super(message);
@@ -171,7 +178,7 @@ public class EngineStore  {
     }
   }
 
-  private void removeOldEngines() {
+  public void removeOldEngines() {
     synchronized(engines){
       for (Map.Entry<String, EngineStoreModel> entry : engines.entrySet()) {
         Duration res = Duration.between(entry.getValue().lastUse, Instant.now());
