@@ -1,0 +1,19 @@
+#!/bin/bash
+
+
+find_id() {
+    SERVER=$1
+    echo "#$SERVER"
+    echo "#-------------"
+    curl -s -LJ  "$SERVER/lifegame?format=json&admin=true" | jq '.[].gameid' | sed 's,\",,g'
+    echo
+}
+
+
+if [ "$1" = "" ]
+then
+    find_id "http://localhost:8080"
+    find_id "http://rameau.sandklef.com:8081"
+else
+    find_id "$1"
+fi

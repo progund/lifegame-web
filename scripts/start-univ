@@ -1,0 +1,16 @@
+#!/bin/bash
+
+
+start_new()
+{
+    SERVER=$1
+    echo "$SERVER"
+    echo "-------------"
+    curl -s -LJ  "$SERVER/lifegame?format=json&world=univ-game-swe&nick=mynick$(( $RANDOM % 100)) " | jq '.gameid' | sed 's,\",,g'
+    echo
+}
+
+
+start_new "http://localhost:8080" 
+start_new "http://rameau.sandklef.com:8081" 
+

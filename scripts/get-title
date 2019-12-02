@@ -1,0 +1,41 @@
+#!/bin/bash
+
+ID=$1
+
+get_info() {
+    SERVER=$1
+    TMP_FILE=/tmp/lifegame-$ID.json
+    echo "$SERVER"
+    echo "------------------"
+    echo    "Id:        $ID"
+    curl -s "$SERVER/lifegame?gameId=$ID&action=current&format=json" > $TMP_FILE 
+    grep -i "{\"error\"" $TMP_FILE > /dev/null
+    if [ $? -eq 0 ]
+    then
+        echo " no such game found"
+    else
+        echo -n "Situation: " ; cat $TMP_FILE | jq '.title' | sed 's,\",,g'
+        echo -n "Nick:      " ; cat $TMP_FILE | jq '.nick' | sed 's,\",,g'
+    fi
+    echo
+}
+
+loop_server_ids()
+{
+    SERVER=$1
+    for id in $($(dirname $0)/find-id "$SERVER" | grep -v -e "^#"  -v -e "^[ ]*$" )
+    do
+        ID=$id
+        get_info "$SERVER"
+    done
+
+}
+
+if [ "$ID" != "" ]
+then
+    get_info "http://rameau.sandklef.com:8081"
+    get_info "http://localhost:8080"
+else
+    loop_server_ids "http://127.0.0.1:8080"
+fi
+
