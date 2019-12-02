@@ -7,6 +7,9 @@ import java.util.List;
 import se.juneday.lifegame.web.EngineStore;
 import se.juneday.lifegame.engine.LifeGameEngine;
 
+import javax.servlet.*;
+import javax.servlet.http.*;
+
 public interface Formatter {
 
   //  String start();
@@ -26,22 +29,29 @@ public interface Formatter {
   String situation(String gameTitle,
                    String gameSubTitle,
                    String title,
+                   String nick,
                    String explanation,
                    String description,
                    String question,
                    List<Suggestion> suggestions,
                    Map<ThingAction, Integer> things,
-                   List<ThingAction> actions);
+                   List<ThingAction> actions,
+                   long millisLeft,
+                   int situations,
+                   int score);
+
+                   
 
   
   String debug(String text);
   void debug(boolean enable);
 
-  String games(EngineStore store);
+  String games(int maxAge, EngineStore store);
   String worlds(List<Formatter.GameInfo> worlds);
   String error(String message);
-
-
+  String info(HttpServletRequest request, HttpServletResponse response,String message);
+  
+  
   public class GameInfo {
     public String title;
     public String subTitle;

@@ -6,6 +6,9 @@ import se.juneday.lifegame.domain.Suggestion;
 import se.juneday.lifegame.web.EngineStore;
 import se.juneday.lifegame.engine.LifeGameEngine;
 
+import javax.servlet.*;
+import javax.servlet.http.*;
+
 import java.util.Map;
 import java.util.List;
 
@@ -223,9 +226,7 @@ public class HTMLFormatter implements Formatter {
     return BR + BR + BR + H4 + text + H4_END ;
   }
 
-  
-  
-  public String games(EngineStore store) {
+  public String games(int maxAge, EngineStore store) {
     String s = start();
     synchronized(store.engines()) {
       s += H1 + "Ongoing games: " + store.engines().size() + H1_END+ BR;
@@ -235,15 +236,31 @@ public class HTMLFormatter implements Formatter {
         LifeGameEngine engine = model.engine;
         Instant instant = model.lastUse;
         inner = H3 + entry.getKey() + H3_END + H5;
-        Duration res = Duration.between(entry.getValue().lastUse, Instant.now());
-        inner += "Last use: " + res.toMinutes() + " minutes" + BR;
-        inner += "Current situation: " + engine.situation().title() + BR;
-        inner += "Score: " + engine.score() + BR;
-        inner += "Situation count: " + engine.situationCount() + BR;
-        inner += "Things: " + engine.things() + BR;
+        try {
+          Duration res = Duration.between(entry.getValue().lastUse, Instant.now());
+          inner += "Game: " + engine.gameTitle() + BR;
+          inner += "Current situation: " + engine.situation().title() + BR;
+          inner += "Score: " + engine.score() + BR;
+          inner += "Situation count: " + engine.situationCount() + BR;
+          inner += "Things: " ;
+          boolean first = true;
+          for (Map.Entry<ThingAction, Integer> t : engine.things().entrySet()) {
+            if (first) {
+              first=false;
+            } else {
+              inner += ",";
+            }            
+            inner += " " +  t.getKey().thing() + " (" + t.getValue() + ")";
+          }
+          inner += BR;
+          inner += "Last use: " + res.toMinutes() + " minutes (max " + (maxAge/1000/60-res.toMinutes()+1) + " minute(s) to removal)"  + BR ;
         // out.print(formater.actions(here.actions()));
         // out.print(formater.things(engine.things()));
-        s += inner + H5_END + "\n";
+          s += inner + H5_END + "\n";
+        } catch (Exception e) {
+          // TODO: perhaps handle this. But really, who cares??
+          ;
+        }
       }
 
       s += end();
@@ -279,19 +296,31 @@ public class HTMLFormatter implements Formatter {
     return sb.toString();
   }
 
+
   public String worlds(List<Formatter.GameInfo> worlds){
-    return "NO IMPLEMENTED";
+    return "worlds NOT IMPLEMENTED";
   }
 
+  public String info(HttpServletRequest request, HttpServletResponse response,String message) {
+    String site = new String("/");
+    response.setStatus(response.SC_MOVED_TEMPORARILY);
+    response.setHeader("Location", site);
+    return "info NOT IMPLEMENTED";
+  }
+  
   public String situation(String gameTitle,
                           String gameSubTitle,
                           String title,
+                          String nick,
                           String explanation,
                           String description,
                           String question,
                           List<Suggestion> suggestions,
                           Map<ThingAction, Integer> things,
-                          List<ThingAction> actions) {
+                          List<ThingAction> actions,
+                          long millisLeft,
+                          int situations,
+                          int score){
     StringBuffer sb = new StringBuffer();
     sb.append(start());
     sb.append(title(title));

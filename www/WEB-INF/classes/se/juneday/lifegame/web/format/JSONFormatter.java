@@ -14,6 +14,8 @@ import java.time.Duration;
 
 import java.net.URLEncoder;
 import java.io.UnsupportedEncodingException;
+import javax.servlet.*;
+import javax.servlet.http.*;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -97,7 +99,7 @@ public class JSONFormatter implements Formatter {
     return jo.toString();
   }
 
-  public String games(EngineStore store) {
+  public String games(int maxAge, EngineStore store) {
     JSONArray jarray = new JSONArray();
     synchronized(store.engines()) {
       for (Map.Entry<String, EngineStore.EngineStoreModel> entry : store.engines().entrySet()) {
@@ -113,6 +115,7 @@ public class JSONFormatter implements Formatter {
         jo.put("score", engine.score());
         jo.put("situationcount",engine.situationCount());
         jo.put("things", things(engine.things()));
+        jo.put("game", engine.gameTitle());
         jarray.put(jo);
       }
 
@@ -126,23 +129,32 @@ public class JSONFormatter implements Formatter {
   public String situation(String gameTitle,
                           String gameSubTitle,
                           String title,
+                          String nick,
                           String explanation,
                           String description,
                           String question,
                           List<Suggestion> suggestions,
                           Map<ThingAction, Integer> things,
-                          List<ThingAction> actions) {
+                          List<ThingAction> actions,
+                          long millisLeft,
+                          int score,
+                          int situations) {
     JSONObject jo = new JSONObject();
     jo.put("gametitle",gameTitle );
     jo.put("gamesubtitle",gameSubTitle );
     jo.put("gameid",gameId );
     jo.put("title",title );
+    jo.put("nick",nick );
     jo.put("question",question );
     jo.put("explanation",explanation(explanation));
     jo.put("description",description);
     jo.put("suggestions",suggestions(suggestions));
     jo.put("actions",actions(actions));
     jo.put("things",things(things));
+    jo.put("millisleft",millisLeft);
+    jo.put("score", score);
+    jo.put("situationcount", situations);
+    //    System.out.println("score: " + engine.score() + "    sit: " + engine.situationCount());
     return jo.toString();
   }
 
@@ -163,6 +175,12 @@ public class JSONFormatter implements Formatter {
       JSONObject jo = new JSONObject();
       jo.put("error", message);
       return jo.toString();
+  }
+
+  public String info(HttpServletRequest request, HttpServletResponse response, String message) {
+    JSONObject jo = new JSONObject();
+    jo.put("ok", message);
+    return jo.toString();
   }
 
 }
